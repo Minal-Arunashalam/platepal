@@ -27,6 +27,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-location",
       [
         "expo-splash-screen",
         {
@@ -40,6 +41,12 @@
         }
       ]
     ],
+    "android": {
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
