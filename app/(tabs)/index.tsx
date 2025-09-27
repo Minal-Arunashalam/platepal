@@ -1,12 +1,33 @@
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import axios from 'axios';
-import * as Location from 'expo-location';
-import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Linking, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import axios from "axios";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Location from "expo-location";
+import { useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Linking,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 // Replace with your Gemini API key
 const GEMINI_API_KEY = "AIzaSyC8Dor1Lgh5Wi5sY1i2oHcuM6FyUtg2oIw";
+
+const palette = {
+  sand: "#FCDE9C", // warm background
+  tangerine: "#FFA552", // primary
+  apricot: "#DE8254", // secondary
+  plum: "#381D2A", // dark text / accents
+  sage: "#C4D6B0", // soft surface
+  white: "#ffffff",
+} as const;
 
 type Restaurant = {
   name: string;
@@ -15,34 +36,111 @@ type Restaurant = {
   rating?: string;
 };
 
+const PressableScale: React.FC<{
+  onPress?: () => void;
+  disabled?: boolean;
+  style?: any;
+  children: React.ReactNode;
+}> = ({ onPress, disabled, style, children }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.97,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      friction: 5,
+      tension: 200,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Animated.View
+      style={[{ transform: [{ scale }] }, disabled && { opacity: 0.6 }]}
+    >
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        disabled={disabled}
+        style={style}
+      >
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
 export default function PlatePalScreen() {
-  const [dietPrefs, setDietPrefs] = useState('');
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [dietPrefs, setDietPrefs] = useState("");
+  const [location, setLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
 
-  const quickPrefs = ['Vegan', 'Vegetarian', 'Gluten-free', 'Halal', 'Kosher', 'Keto'];
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, 120],
+    outputRange: [180, 100],
+    extrapolate: "clamp",
+  });
+  const titleScale = scrollY.interpolate({
+    inputRange: [0, 120],
+    outputRange: [1, 0.9],
+    extrapolate: "clamp",
+  });
+  const titleTranslateY = scrollY.interpolate({
+    inputRange: [0, 120],
+    outputRange: [0, -6],
+    extrapolate: "clamp",
+  });
+
+  const quickPrefs = [
+    "Vegan",
+    "Vegetarian",
+    "Gluten-free",
+    "Halal",
+    "Kosher",
+    "Keto",
+  ];
 
   const onTogglePref = (label: string) => {
     const lower = label.toLowerCase();
-    const tokens = dietPrefs.split(',').map(t => t.trim()).filter(Boolean);
-    if (tokens.map(t => t.toLowerCase()).includes(lower)) {
-      const next = tokens.filter(t => t.toLowerCase() !== lower).join(', ');
+    const tokens = dietPrefs
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (tokens.map((t) => t.toLowerCase()).includes(lower)) {
+      const next = tokens.filter((t) => t.toLowerCase() !== lower).join(", ");
       setDietPrefs(next);
     } else {
-      const next = [...tokens, lower].join(', ').replace(/^,\s*/, '');
+      const next = [...tokens, lower].join(", ").replace(/^,\s*/, "");
       setDietPrefs(next);
     }
   };
 
   const isPrefActive = (label: string) => {
     const lower = label.toLowerCase();
-    return dietPrefs.split(',').map(t => t.trim().toLowerCase()).includes(lower);
+    return dietPrefs
+      .split(",")
+      .map((t) => t.trim().toLowerCase())
+      .includes(lower);
   };
 
   const openInMaps = (r: Restaurant) => {
-    const query = encodeURIComponent(`${r.name} ${r.address ?? ''}`.trim());
+    const query = encodeURIComponent(`${r.name} ${r.address ?? ""}`.trim());
     const url = Platform.select({
       ios: `http://maps.apple.com/?q=${query}`,
       android: `geo:0,0?q=${query}`,
@@ -55,8 +153,11 @@ export default function PlatePalScreen() {
     setLocationLoading(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission denied', 'Location permission is required to find nearby restaurants');
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission denied",
+          "Location permission is required to find nearby restaurants"
+        );
         return;
       }
 
@@ -65,9 +166,14 @@ export default function PlatePalScreen() {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
       });
-      Alert.alert('Location found!', `Lat: ${loc.coords.latitude.toFixed(4)}, Lng: ${loc.coords.longitude.toFixed(4)}`);
+      Alert.alert(
+        "Location found!",
+        `Lat: ${loc.coords.latitude.toFixed(
+          4
+        )}, Lng: ${loc.coords.longitude.toFixed(4)}`
+      );
     } catch (error) {
-      Alert.alert('Error', 'Failed to get location');
+      Alert.alert("Error", "Failed to get location");
     } finally {
       setLocationLoading(false);
     }
@@ -75,17 +181,17 @@ export default function PlatePalScreen() {
 
   const findRestaurants = async () => {
     if (!dietPrefs.trim()) {
-      Alert.alert('Missing info', 'Please enter your dietary preferences');
+      Alert.alert("Missing info", "Please enter your dietary preferences");
       return;
     }
     if (!location) {
-      Alert.alert('Missing location', 'Please get your location first');
+      Alert.alert("Missing location", "Please get your location first");
       return;
     }
 
-    console.log('Starting restaurant search...');
-    console.log('Diet prefs:', dietPrefs);
-    console.log('Location:', location);
+    console.log("Starting restaurant search...");
+    console.log("Diet prefs:", dietPrefs);
+    console.log("Location:", location);
 
     setLoading(true);
     try {
@@ -103,8 +209,8 @@ Please return ONLY a JSON array of restaurants in this exact format:
 
 Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no other text.`;
 
-      console.log('Making API call to Gemini...');
-      
+      console.log("Making API call to Gemini...");
+
       const response = await axios.post(
         `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
@@ -120,70 +226,136 @@ Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no othe
         },
         {
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
         }
       );
 
-      console.log('API Response:', response.data);
-      
-      const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      console.log('Response text:', text);
-      
+      console.log("API Response:", response.data);
+
+      const text =
+        response.data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      console.log("Response text:", text);
+
       // Extract JSON from the response
       const jsonMatch = text.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
-        console.log('Found JSON:', jsonMatch[0]);
+        console.log("Found JSON:", jsonMatch[0]);
         const restaurantData = JSON.parse(jsonMatch[0]);
-        console.log('Parsed restaurants:', restaurantData);
+        console.log("Parsed restaurants:", restaurantData);
         setRestaurants(restaurantData);
-        Alert.alert('Success!', `Found ${restaurantData.length} restaurants`);
+        Alert.alert("Success!", `Found ${restaurantData.length} restaurants`);
       } else {
-        console.log('No JSON found in response');
-        Alert.alert('Error', 'Could not parse restaurant data from response');
+        console.log("No JSON found in response");
+        Alert.alert("Error", "Could not parse restaurant data from response");
       }
     } catch (error: any) {
-      console.error('Full error:', error);
-      console.error('Error response:', error.response?.data);
-      Alert.alert('Error', `Failed to find restaurants: ${error.message || 'Unknown error'}`);
+      console.error("Full error:", error);
+      console.error("Error response:", error.response?.data);
+      Alert.alert(
+        "Error",
+        `Failed to find restaurants: ${error.message || "Unknown error"}`
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  const onRefresh = async () => {
+    if (!location || !dietPrefs.trim()) {
+      setRefreshing(false);
+      return;
+    }
+    setRefreshing(true);
+    try {
+      await findRestaurants();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
-    <ScrollView style={styles.container}>
-      <ThemedView style={styles.header}>
-        <ThemedText type="title" style={styles.title}>🍽️ PlatePal</ThemedText>
-        <ThemedText style={styles.subtitle}>Find restaurants that match your dietary preferences</ThemedText>
-      </ThemedView>
+    <Animated.ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+      onScroll={Animated.event(
+        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+        { useNativeDriver: false }
+      )}
+      scrollEventThrottle={16}
+    >
+      <Animated.View style={[styles.hero, { height: headerHeight }]}>
+        <LinearGradient
+          colors={[palette.sand, palette.sage, palette.tangerine]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={styles.heroInner}>
+          <Animated.Text
+            style={[
+              styles.title,
+              {
+                transform: [
+                  { scale: titleScale },
+                  { translateY: titleTranslateY },
+                ],
+              },
+            ]}
+          >
+            🍽️ PlatePal
+          </Animated.Text>
+          <ThemedText style={styles.subtitle}>
+            Find restaurants that match your dietary preferences ✨
+          </ThemedText>
+          <View style={styles.pill}>
+            <ThemedText style={styles.pillText}>
+              Powered by your tastes
+            </ThemedText>
+          </View>
+        </View>
+      </Animated.View>
 
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle">Your Dietary Preferences</ThemedText>
         <TextInput
-          style={styles.input}
+          style={[styles.input, inputFocused && styles.inputFocused]}
           placeholder="e.g., vegan, gluten-free, halal, keto, vegetarian..."
           value={dietPrefs}
           onChangeText={setDietPrefs}
           multiline
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
         />
         <View style={styles.chipsRow}>
           {quickPrefs.map((label) => (
-            <TouchableOpacity
+            <PressableScale
               key={label}
               onPress={() => onTogglePref(label)}
               style={[styles.chip, isPrefActive(label) && styles.chipActive]}
             >
-              <ThemedText style={[styles.chipText, isPrefActive(label) && styles.chipTextActive]}>{label}</ThemedText>
-            </TouchableOpacity>
+              <ThemedText
+                style={[
+                  styles.chipText,
+                  isPrefActive(label) && styles.chipTextActive,
+                ]}
+              >
+                {label}
+              </ThemedText>
+            </PressableScale>
           ))}
         </View>
-        
       </ThemedView>
 
       <ThemedView style={styles.section}>
-        <TouchableOpacity 
-          style={[styles.button, locationLoading && styles.buttonDisabled]} 
+        <PressableScale
+          style={[
+            styles.button,
+            styles.secondaryButton,
+            locationLoading && styles.buttonDisabled,
+          ]}
           onPress={getLocation}
           disabled={locationLoading}
         >
@@ -191,24 +363,30 @@ Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no othe
             <ActivityIndicator color="white" />
           ) : (
             <ThemedText style={styles.buttonText}>
-              {location ? '📍 Location Found' : '📍 Get My Location'}
+              {location ? "📍 Location Found" : "📍 Get My Location"}
             </ThemedText>
           )}
-        </TouchableOpacity>
+        </PressableScale>
       </ThemedView>
 
       <ThemedView style={styles.section}>
-        <TouchableOpacity 
-          style={[styles.button, styles.searchButton, loading && styles.buttonDisabled]} 
+        <PressableScale
+          style={[
+            styles.button,
+            styles.searchButton,
+            loading && styles.buttonDisabled,
+          ]}
           onPress={findRestaurants}
           disabled={loading || !location || !dietPrefs.trim()}
         >
           {loading ? (
             <ActivityIndicator color="white" />
           ) : (
-            <ThemedText style={styles.buttonText}>🔍 Find restaurants</ThemedText>
+            <ThemedText style={styles.buttonText}>
+              🔍 Find restaurants
+            </ThemedText>
           )}
-        </TouchableOpacity>
+        </PressableScale>
       </ThemedView>
 
       {restaurants.length > 0 && (
@@ -216,18 +394,31 @@ Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no othe
           <ThemedText type="subtitle">Recommended restaurants</ThemedText>
           {restaurants.map((restaurant, index) => (
             <ThemedView key={index} style={styles.restaurantCard}>
+              {restaurant.rating && (
+                <View style={styles.ratingBadge}>
+                  <ThemedText style={styles.ratingBadgeText}>
+                    ⭐ {restaurant.rating}
+                  </ThemedText>
+                </View>
+              )}
               <ThemedText type="defaultSemiBold" style={styles.restaurantName}>
                 {restaurant.name}
               </ThemedText>
-              <ThemedText style={styles.restaurantAddress}>{restaurant.address}</ThemedText>
-              <ThemedText style={styles.restaurantDescription}>{restaurant.description}</ThemedText>
-              { restaurant.rating && (
-                <ThemedText style={styles.restaurantRating}>⭐ {restaurant.rating}</ThemedText>
-              )}
+              <ThemedText style={styles.restaurantAddress}>
+                {restaurant.address}
+              </ThemedText>
+              <ThemedText style={styles.restaurantDescription}>
+                {restaurant.description}
+              </ThemedText>
               <View style={styles.cardActions}>
-                <TouchableOpacity style={[styles.smallBtn, styles.mapsBtn]} onPress={() => openInMaps(restaurant)}>
-                  <ThemedText style={styles.smallBtnText}>Open in Maps</ThemedText>
-                </TouchableOpacity>
+                <PressableScale
+                  style={[styles.smallBtn, styles.mapsBtn]}
+                  onPress={() => openInMaps(restaurant)}
+                >
+                  <ThemedText style={styles.smallBtnText}>
+                    Open in Maps
+                  </ThemedText>
+                </PressableScale>
               </View>
             </ThemedView>
           ))}
@@ -237,180 +428,247 @@ Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no othe
       {!loading && restaurants.length === 0 && (
         <ThemedView style={styles.section}>
           <ThemedText type="subtitle">No results yet</ThemedText>
-          <ThemedText>Enter your dietary preferences and tap "Get My Location" then "Find restaurants".</ThemedText>
+          <ThemedText>
+            Enter your dietary preferences and tap "Get My Location" then "Find
+            restaurants".
+          </ThemedText>
         </ThemedView>
       )}
 
       {loading && (
         <View style={styles.loadingOverlay} pointerEvents="none">
           <View style={styles.loadingCard}>
-            <ActivityIndicator size="large" color="#00b894" />
-            <ThemedText style={{ marginTop: 12 }}>Finding great places for you…</ThemedText>
+            <ActivityIndicator size="large" color={palette.tangerine} />
+            <ThemedText style={{ marginTop: 12 }}>
+              Finding great places for you…
+            </ThemedText>
           </View>
         </View>
       )}
-    </ScrollView>
+    </Animated.ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: palette.sand,
   },
-  header: {
-    padding: 24,
-    alignItems: 'center',
-    backgroundColor: '#f0fbf7',
-    borderBottomWidth: 0,
-    borderBottomColor: 'transparent',
-    borderRadius: 16,
-    margin: 16,
+  hero: {
+    justifyContent: "flex-end",
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: "hidden",
+    marginBottom: 12,
+  },
+  heroInner: {
+    paddingHorizontal: 20,
+    paddingBottom: 18,
+  },
+  pill: {
+    alignSelf: "center",
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(255, 255, 255, 0.6)",
+    borderWidth: 1,
+    borderColor: "rgba(56,29,42,0.15)",
+  },
+  pillText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: palette.plum,
+    letterSpacing: 0.3,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#2d3436',
+    fontSize: 30,
+    fontWeight: "800",
+    color: palette.plum,
+    letterSpacing: 0.2,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#636e72',
-    textAlign: 'center',
+    fontSize: 15,
+    color: palette.plum,
+    opacity: 0.8,
+    textAlign: "center",
     marginTop: 8,
   },
   section: {
+    marginTop: 8,
     marginHorizontal: 16,
     marginBottom: 16,
     padding: 16,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: palette.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: palette.sage,
+    shadowColor: palette.plum,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
+    borderColor: palette.sage,
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
-    marginTop: 8,
-    minHeight: 80,
-    textAlignVertical: 'top',
+    marginTop: 10,
+    minHeight: 84,
+    textAlignVertical: "top",
+    backgroundColor: palette.white,
+  },
+  inputFocused: {
+    borderColor: palette.tangerine,
+    backgroundColor: palette.white,
+    shadowColor: palette.tangerine,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
   },
   button: {
-    backgroundColor: '#0984e3',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 10,
+    shadowColor: palette.plum,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+  },
+  secondaryButton: {
+    backgroundColor: palette.apricot,
   },
   searchButton: {
-    backgroundColor: '#00b894',
+    backgroundColor: palette.tangerine,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
-    color: 'white',
+    color: palette.white,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
   restaurantCard: {
-    backgroundColor: '#f9fcff',
+    backgroundColor: palette.white,
     padding: 16,
-    borderRadius: 8,
-    marginTop: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#00b894',
+    borderRadius: 14,
+    marginTop: 14,
     borderWidth: 1,
-    borderColor: '#eaf0f4',
+    borderColor: palette.sage,
+    shadowColor: palette.plum,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2,
   },
   restaurantName: {
-    fontSize: 18,
-    color: '#2d3436',
+    fontSize: 17,
+    color: palette.plum,
+    fontWeight: "700",
+    paddingRight: 72,
   },
   restaurantAddress: {
-    fontSize: 14,
-    color: '#636e72',
-    marginTop: 4,
+    fontSize: 13,
+    color: palette.plum,
+    opacity: 0.8,
+    marginTop: 6,
   },
   restaurantDescription: {
     fontSize: 14,
-    color: '#2d3436',
-    marginTop: 8,
+    color: palette.plum,
+    marginTop: 10,
     lineHeight: 20,
   },
-  restaurantRating: {
-    fontSize: 14,
-    color: '#e17055',
-    marginTop: 8,
-    fontWeight: 'bold',
+  ratingBadge: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    backgroundColor: palette.plum,
+    borderColor: palette.apricot,
+    borderWidth: 1,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 999,
+  },
+  ratingBadgeText: {
+    fontSize: 12,
+    color: palette.sand,
+    fontWeight: "700",
   },
   chipsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     marginTop: 12,
   },
   chip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    backgroundColor: '#eef2f7',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: palette.sage,
     borderWidth: 1,
-    borderColor: '#e0e6ee',
+    borderColor: palette.apricot,
   },
   chipActive: {
-    backgroundColor: '#d7f5ea',
-    borderColor: '#00b894',
+    backgroundColor: palette.sand,
+    borderColor: palette.tangerine,
+    shadowColor: palette.plum,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   chipText: {
-    color: '#4b5563',
+    color: palette.plum,
     fontSize: 13,
+    fontWeight: "600",
   },
   chipTextActive: {
-    color: '#0c8a6a',
-    fontWeight: '600',
+    color: palette.plum,
+    fontWeight: "800",
   },
   cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 12,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 14,
   },
   smallBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
   },
   mapsBtn: {
-    backgroundColor: '#0984e3',
+    backgroundColor: palette.plum,
   },
   smallBtnText: {
-    color: '#fff',
-    fontWeight: '600',
+    color: palette.white,
+    fontWeight: "700",
     fontSize: 13,
+    letterSpacing: 0.2,
   },
   loadingOverlay: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(56,29,42,0.06)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    backgroundColor: palette.white,
+    padding: 22,
+    borderRadius: 14,
+    shadowColor: palette.plum,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 16,
     elevation: 4,
   },
 });
