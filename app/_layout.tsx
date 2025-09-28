@@ -13,11 +13,32 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
+// Custom theme with our brand colors
+const CustomLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    text: '#381D2A',
+    primary: '#381D2A',
+    background: '#fff',
+  },
+};
+
+const CustomDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    text: '#ECEDEE',
+    primary: '#ECEDEE',
+    background: '#151718',
+  },
+};
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colorScheme === "dark" ? CustomDarkTheme : CustomLightTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen

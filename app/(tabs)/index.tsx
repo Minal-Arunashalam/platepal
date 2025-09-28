@@ -1,7 +1,7 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { TopBar } from "@/components/top-bar";
 import axios from "axios";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import { useRef, useState } from "react";
 import {
@@ -90,22 +90,6 @@ export default function PlatePalScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
 
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const headerHeight = scrollY.interpolate({
-    inputRange: [0, 120],
-    outputRange: [180, 100],
-    extrapolate: "clamp",
-  });
-  const titleScale = scrollY.interpolate({
-    inputRange: [0, 120],
-    outputRange: [1, 0.9],
-    extrapolate: "clamp",
-  });
-  const titleTranslateY = scrollY.interpolate({
-    inputRange: [0, 120],
-    outputRange: [0, -6],
-    extrapolate: "clamp",
-  });
 
   const quickPrefs = [
     "Vegan",
@@ -275,49 +259,14 @@ Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no othe
   };
 
   return (
-    <Animated.ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-      onScroll={Animated.event(
-        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-        { useNativeDriver: false }
-      )}
-      scrollEventThrottle={16}
-    >
-      <Animated.View style={[styles.hero, { height: headerHeight }]}>
-        <LinearGradient
-          colors={[palette.sand, palette.sage, palette.tangerine]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-        <View style={styles.heroInner}>
-          <Animated.Text
-            style={[
-              styles.title,
-              {
-                transform: [
-                  { scale: titleScale },
-                  { translateY: titleTranslateY },
-                ],
-              },
-            ]}
-          >
-            🍽️ PlatePal
-          </Animated.Text>
-          <ThemedText style={styles.subtitle}>
-            Find restaurants that match your dietary preferences ✨
-          </ThemedText>
-          <View style={styles.pill}>
-            <ThemedText style={styles.pillText}>
-              Powered by your tastes
-            </ThemedText>
-          </View>
-        </View>
-      </Animated.View>
-
+    <>
+      <TopBar platepallogo="platepallogo" />
+      <Animated.ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
       <ThemedView style={styles.section}>
         <ThemedText type="subtitle">Your Dietary Preferences</ThemedText>
         <TextInput
@@ -445,7 +394,8 @@ Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no othe
           </View>
         </View>
       )}
-    </Animated.ScrollView>
+      </Animated.ScrollView>
+    </>
   );
 }
 
@@ -453,46 +403,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: palette.sand,
-  },
-  hero: {
-    justifyContent: "flex-end",
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: "hidden",
-    marginBottom: 12,
-  },
-  heroInner: {
-    paddingHorizontal: 20,
-    paddingBottom: 18,
-  },
-  pill: {
-    alignSelf: "center",
-    marginTop: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: "rgba(255, 255, 255, 0.6)",
-    borderWidth: 1,
-    borderColor: "rgba(56,29,42,0.15)",
-  },
-  pillText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: palette.plum,
-    letterSpacing: 0.3,
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: "800",
-    color: palette.plum,
-    letterSpacing: 0.2,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: palette.plum,
-    opacity: 0.8,
-    textAlign: "center",
-    marginTop: 8,
   },
   section: {
     marginTop: 8,
