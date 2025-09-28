@@ -272,6 +272,7 @@ Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no othe
         <TextInput
           style={[styles.input, inputFocused && styles.inputFocused]}
           placeholder="e.g., vegan, gluten-free, halal, keto, vegetarian..."
+          placeholderTextColor="#999999"
           value={dietPrefs}
           onChangeText={setDietPrefs}
           multiline
@@ -295,6 +296,14 @@ Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no othe
               </ThemedText>
             </PressableScale>
           ))}
+          <PressableScale
+            onPress={() => setDietPrefs("")}
+            style={styles.clearChip}
+          >
+            <ThemedText style={styles.clearChipText}>
+              Clear
+            </ThemedText>
+          </PressableScale>
         </View>
       </ThemedView>
 
@@ -541,6 +550,24 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: palette.plum,
     fontWeight: "800",
+  },
+  clearChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: "#FF4444",
+    borderWidth: 1,
+    borderColor: "#CC0000",
+    shadowColor: "#FF4444",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  clearChipText: {
+    color: palette.white,
+    fontSize: 13,
+    fontWeight: "700",
   },
   cardActions: {
     flexDirection: "row",
