@@ -16,7 +16,7 @@ export function ThemedText({
   ...rest
 }: ThemedTextProps) {
   // Always use our custom color, override any theme-based colors
-  const color = lightColor || darkColor || '#381D2A';
+  const color = lightColor || darkColor || '#381d2a';
 
   return (
     <Text
@@ -50,12 +50,13 @@ const styles = StyleSheet.create({
     lineHeight: 32,
   },
   subtitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
+    marginBottom: 8,
   },
   link: {
     lineHeight: 30,
     fontSize: 16,
-    color: '#381D2A',
+    color: '#381d2a',
   },
 });

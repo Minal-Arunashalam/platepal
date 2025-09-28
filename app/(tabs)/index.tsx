@@ -21,11 +21,11 @@ import {
 const GEMINI_API_KEY = "AIzaSyC8Dor1Lgh5Wi5sY1i2oHcuM6FyUtg2oIw";
 
 const palette = {
-  sand: "#FCDE9C", // warm background
-  tangerine: "#FFA552", // primary
-  apricot: "#DE8254", // secondary
-  plum: "#381D2A", // dark text / accents
-  sage: "#C4D6B0", // soft surface
+  sand: "#fcde9c", // warm background (matches logo)
+  tangerine: "#ffa552", // primary (matches logo)
+  apricot: "#e0863d", // secondary (matches logo)
+  plum: "#381d2a", // dark text / accents (matches logo)
+  sage: "#fcde9c", // soft surface (matches logo background)
   white: "#ffffff",
 } as const;
 
@@ -84,6 +84,7 @@ export default function PlatePalScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [zipCode, setZipCode] = useState("");
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -168,18 +169,33 @@ export default function PlatePalScreen() {
       Alert.alert("Missing info", "Please enter your dietary preferences");
       return;
     }
-    if (!location) {
-      Alert.alert("Missing location", "Please get your location first");
+    if (!location && !zipCode.trim()) {
+      Alert.alert("Missing location", "Please enter a zip code or get your location first");
+      return;
+    }
+
+    // Use zip code if no location, or use location if available
+    let searchLocation = location;
+    if (!location && zipCode.trim()) {
+      // Simple zip code to coordinates (this is a placeholder - in real app you'd use a geocoding service)
+      Alert.alert("Zip Code Search", "Zip code search is coming soon! Please use the location button for now.");
+      return;
+    }
+
+    if (!searchLocation) {
+      Alert.alert("Error", "No valid location found");
       return;
     }
 
     console.log("Starting restaurant search...");
     console.log("Diet prefs:", dietPrefs);
-    console.log("Location:", location);
+    console.log("Location:", searchLocation);
 
     setLoading(true);
     try {
-      const prompt = `Find me restaurants near latitude ${location.latitude}, longitude ${location.longitude} that match these dietary preferences: ${dietPrefs}. 
+      const prompt = `Find me restaurants near latitude ${searchLocation.latitude}, longitude ${searchLocation.longitude} that match these dietary preferences: ${dietPrefs}. 
+
+IMPORTANT: For each restaurant, you MUST include a realistic rating based on actual review data. Research and provide accurate ratings that reflect real customer reviews.
 
 Please return ONLY a JSON array of restaurants in this exact format:
 [
@@ -187,11 +203,16 @@ Please return ONLY a JSON array of restaurants in this exact format:
     "name": "Restaurant Name",
     "address": "Street address",
     "description": "Brief description of why it matches the dietary preferences",
-    "rating": "4.5/5 or similar"
+    "rating": "4.2/5"
   }
 ]
 
-Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no other text.`;
+Requirements:
+- Always include a rating field for every restaurant (required field)
+- Use realistic ratings between 2.0/5 and 5.0/5 based on actual review data
+- Format ratings as "X.X/5" (e.g., "4.2/5", "3.8/5")
+- Limit to 8 restaurants maximum
+- Make sure the JSON is valid and contains no other text`;
 
       console.log("Making API call to Gemini...");
 
@@ -263,39 +284,71 @@ Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no othe
       <TopBar platepallogo="platepallogo" />
       <Animated.ScrollView
         style={styles.container}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        showsVerticalScrollIndicator={false}
       >
-      <ThemedView style={styles.section}>
-        <ThemedText type="subtitle">Your Dietary Preferences</ThemedText>
-        <TextInput
-          style={[styles.input, inputFocused && styles.inputFocused]}
-          placeholder="e.g., vegan, gluten-free, halal, keto, vegetarian..."
-          placeholderTextColor="#999999"
-          value={dietPrefs}
-          onChangeText={setDietPrefs}
-          multiline
-          onFocus={() => setInputFocused(true)}
-          onBlur={() => setInputFocused(false)}
-        />
-        <View style={styles.chipsRow}>
-          {quickPrefs.map((label) => (
+      <ThemedView style={styles.mainSection}>
+        <ThemedText type="subtitle">Find Your Perfect Restaurant</ThemedText>
+
+        {/* Location Input */}
+        <View style={styles.locationContainer}>
+          <ThemedText style={styles.inputLabel}>Location:</ThemedText>
+          <View style={styles.locationInputRow}>
+            <TextInput
+              style={[styles.zipInput, inputFocused && styles.zipInputFocused]}
+              placeholder="Enter zip code (optional)"
+              placeholderTextColor="#999999"
+              value={zipCode}
+              onChangeText={setZipCode}
+              keyboardType="numeric"
+              maxLength={5}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
+            />
             <PressableScale
-              key={label}
-              onPress={() => onTogglePref(label)}
-              style={[styles.chip, isPrefActive(label) && styles.chipActive]}
+              style={[
+                styles.locationIconButton,
+                locationLoading && styles.buttonDisabled,
+              ]}
+              onPress={getLocation}
+              disabled={locationLoading}
             >
-              <ThemedText
-                style={[
-                  styles.chipText,
-                  isPrefActive(label) && styles.chipTextActive,
-                ]}
-              >
-                {label}
-              </ThemedText>
+              {locationLoading ? (
+                <ActivityIndicator color={palette.plum} size="small" />
+              ) : (
+                <ThemedText style={styles.faviconIcon}>⌖</ThemedText>
+              )}
             </PressableScale>
-          ))}
+          </View>
+          <ThemedText style={styles.statusText}>
+            {location ? `Location: ${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}` : 
+             zipCode ? `Zip code: ${zipCode}` : "Enter zip code or tap icon to get location"}
+          </ThemedText>
+        </View>
+
+        {/* Preference Chips */}
+        <View style={styles.chipsContainer}>
+          <View style={styles.chipsRow}>
+            {quickPrefs.map((label) => (
+              <PressableScale
+                key={label}
+                onPress={() => onTogglePref(label)}
+                style={[styles.chip, isPrefActive(label) && styles.chipActive]}
+              >
+                <ThemedText
+                  style={[
+                    styles.chipText,
+                    isPrefActive(label) && styles.chipTextActive,
+                  ]}
+                >
+                  {label}
+                </ThemedText>
+              </PressableScale>
+            ))}
+          </View>
           <PressableScale
             onPress={() => setDietPrefs("")}
             style={styles.clearChip}
@@ -305,46 +358,39 @@ Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no othe
             </ThemedText>
           </PressableScale>
         </View>
-      </ThemedView>
 
-      <ThemedView style={styles.section}>
-        <PressableScale
-          style={[
-            styles.button,
-            styles.secondaryButton,
-            locationLoading && styles.buttonDisabled,
-          ]}
-          onPress={getLocation}
-          disabled={locationLoading}
-        >
-          {locationLoading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <ThemedText style={styles.buttonText}>
-              {location ? "📍 Location Found" : "📍 Get My Location"}
-            </ThemedText>
-          )}
-        </PressableScale>
-      </ThemedView>
+        {/* Custom Preferences Input */}
+        <View style={styles.customInputContainer}>
+          <ThemedText style={styles.inputLabel}>Add custom preferences:</ThemedText>
+          <TextInput
+            style={[styles.customInput, inputFocused && styles.customInputFocused]}
+            placeholder="e.g., nut-free, dairy-free, spicy..."
+            placeholderTextColor="#999999"
+            value={dietPrefs}
+            onChangeText={setDietPrefs}
+            multiline
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+          />
+        </View>
 
-      <ThemedView style={styles.section}>
-        <PressableScale
-          style={[
-            styles.button,
-            styles.searchButton,
-            loading && styles.buttonDisabled,
-          ]}
-          onPress={findRestaurants}
-          disabled={loading || !location || !dietPrefs.trim()}
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <ThemedText style={styles.buttonText}>
-              🔍 Find restaurants
-            </ThemedText>
-          )}
-        </PressableScale>
+        {/* Action Buttons Row - Bottom */}
+        <View style={styles.actionButtonsRow}>
+          <PressableScale
+            style={[
+              styles.searchButtonWithText,
+              loading && styles.buttonDisabled,
+            ]}
+            onPress={findRestaurants}
+            disabled={loading || (!location && !zipCode.trim()) || !dietPrefs.trim()}
+          >
+            {loading ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <ThemedText style={styles.searchButtonText}>Search</ThemedText>
+            )}
+          </PressableScale>
+        </View>
       </ThemedView>
 
       {restaurants.length > 0 && (
@@ -355,7 +401,7 @@ Limit to 8 restaurants maximum. Make sure the JSON is valid and contains no othe
               {restaurant.rating && (
                 <View style={styles.ratingBadge}>
                   <ThemedText style={styles.ratingBadgeText}>
-                    ⭐ {restaurant.rating}
+                    ★ {restaurant.rating}
                   </ThemedText>
                 </View>
               )}
@@ -413,49 +459,173 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: palette.sand,
   },
-  section: {
-    marginTop: 8,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    backgroundColor: palette.white,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: palette.sage,
-    shadowColor: palette.plum,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 2,
+  scrollContent: {
+    paddingBottom: 40,
   },
-  input: {
-    borderWidth: 1,
+  section: {
+    marginTop: 16,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 24,
+    backgroundColor: palette.white,
+    borderRadius: 20,
+    shadowColor: palette.plum,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  mainSection: {
+    marginTop: 16,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 28,
+    backgroundColor: palette.white,
+    borderRadius: 24,
+    shadowColor: palette.plum,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  locationContainer: {
+    marginTop: 20,
+    marginBottom: 16,
+  },
+  locationInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 8,
+  },
+  zipInput: {
+    flex: 1,
+    borderWidth: 2,
     borderColor: palette.sage,
-    borderRadius: 12,
+    borderRadius: 24,
     padding: 14,
     fontSize: 16,
-    marginTop: 10,
-    minHeight: 84,
+    backgroundColor: palette.white,
+    minHeight: 48,
+  },
+  zipInputFocused: {
+    borderColor: palette.tangerine,
+    shadowColor: palette.tangerine,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  locationIconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: palette.sage,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: palette.plum,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  faviconIcon: {
+    fontSize: 22,
+    color: palette.plum,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+  actionButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 24,
+  },
+  searchButtonWithText: {
+    backgroundColor: palette.tangerine,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 28,
+    shadowColor: palette.plum,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    minHeight: 56,
+  },
+  searchButtonText: {
+    color: palette.white,
+    fontSize: 18,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  statusText: {
+    fontSize: 14,
+    color: palette.plum,
+    marginTop: 8,
+    opacity: 0.8,
+  },
+  customInputContainer: {
+    marginTop: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    color: palette.plum,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  customInput: {
+    borderWidth: 2,
+    borderColor: palette.sage,
+    borderRadius: 24,
+    padding: 16,
+    fontSize: 16,
+    minHeight: 60,
     textAlignVertical: "top",
     backgroundColor: palette.white,
+    lineHeight: 22,
   },
-  inputFocused: {
+  customInputFocused: {
     borderColor: palette.tangerine,
     backgroundColor: palette.white,
     shadowColor: palette.tangerine,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
+    elevation: 4,
+  },
+  input: {
+    borderWidth: 2,
+    borderColor: palette.sage,
+    borderRadius: 24,
+    padding: 20,
+    fontSize: 17,
+    marginTop: 16,
+    minHeight: 120,
+    textAlignVertical: "top",
+    backgroundColor: palette.white,
+    lineHeight: 24,
+  },
+  inputFocused: {
+    borderColor: palette.tangerine,
+    backgroundColor: palette.white,
+    shadowColor: palette.tangerine,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   button: {
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 20,
+    borderRadius: 28,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 16,
     shadowColor: palette.plum,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.14,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
+    minHeight: 56,
   },
   secondaryButton: {
     backgroundColor: palette.apricot,
@@ -468,40 +638,39 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: palette.white,
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "700",
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   restaurantCard: {
     backgroundColor: palette.white,
-    padding: 16,
-    borderRadius: 14,
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: palette.sage,
+    padding: 20,
+    borderRadius: 20,
+    marginTop: 16,
     shadowColor: palette.plum,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.07,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
   restaurantName: {
-    fontSize: 17,
+    fontSize: 20,
     color: palette.plum,
     fontWeight: "700",
-    paddingRight: 72,
+    paddingRight: 80,
+    marginBottom: 8,
   },
   restaurantAddress: {
-    fontSize: 13,
+    fontSize: 15,
     color: palette.plum,
     opacity: 0.8,
-    marginTop: 6,
+    marginTop: 8,
   },
   restaurantDescription: {
-    fontSize: 14,
+    fontSize: 16,
     color: palette.plum,
-    marginTop: 10,
-    lineHeight: 20,
+    marginTop: 12,
+    lineHeight: 24,
   },
   ratingBadge: {
     position: "absolute",
@@ -519,32 +688,41 @@ const styles = StyleSheet.create({
     color: palette.sand,
     fontWeight: "700",
   },
+  chipsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginTop: 8,
+  },
   chipsRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginTop: 12,
+    gap: 12,
+    flex: 1,
   },
   chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
     borderRadius: 999,
     backgroundColor: palette.sage,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: palette.apricot,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   chipActive: {
     backgroundColor: palette.sand,
     borderColor: palette.tangerine,
     shadowColor: palette.plum,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   chipText: {
     color: palette.plum,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: "600",
   },
   chipTextActive: {
@@ -552,21 +730,25 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   clearChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
     borderRadius: 999,
     backgroundColor: "#FF4444",
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: "#CC0000",
     shadowColor: "#FF4444",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
   },
   clearChipText: {
     color: palette.white,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: "700",
   },
   cardActions: {
@@ -575,9 +757,10 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   smallBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 22,
+    minHeight: 44,
   },
   mapsBtn: {
     backgroundColor: palette.plum,
@@ -585,8 +768,8 @@ const styles = StyleSheet.create({
   smallBtnText: {
     color: palette.white,
     fontWeight: "700",
-    fontSize: 13,
-    letterSpacing: 0.2,
+    fontSize: 15,
+    letterSpacing: 0.3,
   },
   loadingOverlay: {
     position: "absolute",

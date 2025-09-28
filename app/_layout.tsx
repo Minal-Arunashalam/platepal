@@ -13,14 +13,17 @@ export const unstable_settings = {
   anchor: "(tabs)",
 };
 
-// Custom theme with our brand colors
+// Custom theme with our PlatePal brand colors
 const CustomLightTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    text: '#381D2A',
-    primary: '#381D2A',
-    background: '#fff',
+    text: '#381d2a',
+    primary: '#ffa552',
+    background: '#fcde9c',
+    card: '#ffffff',
+    border: '#e0863d',
+    notification: '#ffa552',
   },
 };
 
@@ -28,9 +31,12 @@ const CustomDarkTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    text: '#ECEDEE',
-    primary: '#ECEDEE',
-    background: '#151718',
+    text: '#fcde9c',
+    primary: '#ffa552',
+    background: '#381d2a',
+    card: '#2a1420',
+    border: '#e0863d',
+    notification: '#ffa552',
   },
 };
 
