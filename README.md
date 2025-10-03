@@ -1,50 +1,121 @@
-# Welcome to your Expo app 👋
+# PlatePal 🍽️
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**Find restaurants that match your dietary preferences with AI-powered recommendations**
 
-## Get started
+PlatePal is a React Native app built with Expo that helps you discover restaurants tailored to your specific dietary needs. Simply enter your preferences, share your location, and let AI find the perfect dining spots for you.
 
-1. Install dependencies
+## ✨ Features
 
+- **Smart Dietary Matching**: Input custom dietary preferences or select from quick options (Vegan, Vegetarian, Gluten-free, Halal, Kosher, Keto)
+- **Location-Based Search**: Use GPS location or zip code to find nearby restaurants
+- **AI-Powered Recommendations**: Leverages Google's Gemini AI to provide personalized restaurant suggestions
+- **Restaurant Details**: Get names, addresses, descriptions, and ratings for each recommendation
+- **Maps Integration**: Open restaurants directly in your device's maps app
+- **Beautiful UI**: Modern, accessible design with smooth animations and intuitive interactions
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js (v16 or higher)
+- Expo CLI
+- iOS Simulator or Android Emulator (or physical device with Expo Go)
+
+### Installation
+
+1. **Clone and install dependencies**
    ```bash
+   git clone <repository-url>
+   cd platepal
    npm install
    ```
 
-2. Start the app
+2. **Set up Gemini API**
+   - Get a Gemini API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Replace the API key in `app/(tabs)/index.tsx` (line 21)
 
+3. **Start the development server**
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. **Run on device**
+   - Scan the QR code with Expo Go (iOS/Android)
+   - Or press `i` for iOS Simulator / `a` for Android Emulator
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🛠️ Tech Stack
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- **Framework**: React Native with Expo
+- **Language**: TypeScript
+- **Navigation**: Expo Router with file-based routing
+- **AI**: Google Gemini 2.5 Flash API
+- **Location**: Expo Location
+- **HTTP Client**: Axios
+- **Styling**: React Native StyleSheet with custom design system
 
-## Get a fresh project
+## 📱 How to Use
 
-When you're ready, run:
+1. **Set Location**: Enter a zip code or tap the location icon to use GPS
+2. **Choose Preferences**: Select quick dietary options or add custom preferences
+3. **Search**: Tap "Search" to find AI-recommended restaurants
+4. **Explore Results**: View restaurant details, ratings, and descriptions
+5. **Navigate**: Tap "Open in Maps" to get directions
 
-```bash
-npm run reset-project
+## 🎨 Design System
+
+PlatePal uses a warm, food-inspired color palette:
+- **Sand** (#fcde9c): Background
+- **Tangerine** (#ffa552): Primary actions
+- **Apricot** (#e0863d): Secondary elements
+- **Plum** (#381d2a): Text and accents
+- **White** (#ffffff): Cards and surfaces
+
+## 📂 Project Structure
+
+```
+platepal/
+├── app/
+│   ├── (tabs)/
+│   │   └── index.tsx          # Main restaurant finder screen
+│   └── _layout.tsx            # Root layout
+├── components/
+│   ├── themed-text.tsx        # Themed text components
+│   ├── themed-view.tsx        # Themed view components
+│   └── top-bar.tsx           # App header
+├── assets/                    # Images and icons
+└── package.json
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🔧 Configuration
 
-## Learn more
+### Location Permissions
+The app requests location permissions for GPS-based restaurant discovery. Permissions are configured in `app.json`:
 
-To learn more about developing your project with Expo, look at the following resources:
+```json
+"android": {
+  "permissions": [
+    "android.permission.ACCESS_FINE_LOCATION",
+    "android.permission.ACCESS_COARSE_LOCATION"
+  ]
+}
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### API Configuration
+Replace the Gemini API key in `app/(tabs)/index.tsx`:
+```typescript
+const GEMINI_API_KEY = "your-api-key-here";
+```
 
-## Join the community
+## 🚧 Development Notes
 
-Join our community of developers creating universal apps.
+This is a hackathon project focused on simplicity and rapid development:
+- Direct API calls from the client (no backend required)
+- Minimal external dependencies
+- Single-screen experience for maximum impact
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 📄 License
+
+This project is private and intended for hackathon use.
+
+---
+
+**Built with ❤️ for food lovers everywhere**
