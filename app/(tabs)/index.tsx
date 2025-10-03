@@ -18,7 +18,7 @@ import {
 } from "react-native";
 
 // Replace with your Gemini API key
-const GEMINI_API_KEY = "AIzaSyC8Dor1Lgh5Wi5sY1i2oHcuM6FyUtg2oIw";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const palette = {
   sand: "#fcde9c", // warm background (matches logo)
